@@ -1,0 +1,6 @@
+__pycache__/
+.vscode/
+cache/
+modpacks/*
+!modpacks/example.ldr
+mods/
