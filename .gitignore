@@ -4,3 +4,5 @@ cache/
 modpacks/*
 !modpacks/example.ldr
 mods/
+LegoLoader/
+build.json
