@@ -1,6 +1,7 @@
 import Modrinth
 import customtkinter as ctk
 import os
+__version__ = '2.0.0'
 
 class Modpack():
     pth:str
@@ -46,7 +47,7 @@ class App(ctk.CTk):
     
     def __init__(self):
         super().__init__()
-        self.title("LegoLoader")
+        self.title(f"LegoLoader {__version__}")
         self.resizable(False,False)
 
         self.rowconfigure(0,weight=1)
@@ -74,6 +75,7 @@ class App(ctk.CTk):
         self.version_label = ctk.CTkLabel(self.control_frame,text="Version: ",state='disabled',height=20)
         self.download_button = ctk.CTkButton(self.control_frame,text='Download',state='disabled',command=self.download_mods)
         self.install_button = ctk.CTkButton(self.control_frame,text='Install',state='disabled')
+        self.progress_status = ctk.CTkLabel(self.control_frame,text="Ready",height=20)
         self.progress_bar = ctk.CTkProgressBar(self.control_frame)
         self.progress_bar.set(1)
 
@@ -81,7 +83,8 @@ class App(ctk.CTk):
         self.version_label.pack(side=ctk.TOP,padx=5,pady=2)
         self.download_button.pack(side=ctk.TOP,padx=5,pady=2)
         self.install_button.pack(side=ctk.TOP,padx=5,pady=2)
-        self.progress_bar.pack()
+        self.progress_status.pack(side=ctk.TOP,padx=5,pady=2)
+        self.progress_bar.pack(side=ctk.TOP,padx=5,pady=2)
         
     def modpack_selector_refresh(self):
         '''reloads all options for the modpack selector'''
@@ -97,6 +100,8 @@ class App(ctk.CTk):
     def select_modpack(self,modpackname:str):
         self.modpack_selector_refresh()
         self.modpack = Modpack.from_file(f'./modpacks/{modpackname}.ldr')
+        self.progress_status.configure(True,text="loading modpack...")
+        self.update_idletasks()
 
         self.loader_label.configure(state='normal',text=f"Loader: {self.modpack.loaders[0]}")
         self.version_label.configure(state='normal',text=f"Version: {self.modpack.mcversions[0]}")
@@ -116,7 +121,7 @@ class App(ctk.CTk):
             self.selectable_mods[slug].pack()
         self.download_button.configure(state='default')
         self.install_button.configure(state='default')
-
+        self.progress_status.configure(True,text="Ready!")
     def download_mods(self):
         self.modpack_selector.configure(state='disabled')
         self.download_button.configure(state='disabled')
@@ -125,16 +130,24 @@ class App(ctk.CTk):
         for slug,ckbox in self.selectable_mods.items():
             if ckbox.get():
                 install.append(slug)
+            ckbox.configure(state='disabled')
         for c,slug in enumerate(install):
             self.progress_bar.set((c+1)/(len(install)+1))
+            self.progress_status.configure(text=f'downloading {slug[:16]}...')
             self.update()
             print(f'downloading {slug}...')
-            Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend else 0)
+            import time
+            time.sleep(0.2)
+            #Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend else 0)
+        for ckbox in self.selectable_mods.values():
+            ckbox.configure(state='normal')
+        self.progress_status.configure(text=f'Done!')
         print('done!')
         self.progress_bar.set(1)
         self.modpack_selector.configure(state='readonly')
         self.download_button.configure(state='normal')
         self.install_button.configure(state='normal')
+    
 
     
 
