@@ -1,13 +1,14 @@
 import Modrinth
 import customtkinter as ctk
-import os
-__version__ = '2.1.0'
+import os,re
+__version__ = '2.4.0'
 
 class Modpack():
     pth:str
-    mods:list[tuple[Modrinth.slug,bool]] = []
+    mods:dict[Modrinth.slug,tuple[bool,list[Modrinth.slug]]] = {}
     loaders:list[Modrinth.valid_loaders] = []
     can_depend:bool = False
+    manual_depends:bool = True
     mcversions:list[str] = []
     def __repr__(self) -> str:
         return f"<Modpack '{self.pth}'>"
@@ -15,26 +16,37 @@ class Modpack():
     @classmethod
     def from_file(cls,pth:str):
         self = cls()
-        self.mods = []
+        self.mods = {}
         self.loaders = []
         self.mcversions = []
         self.can_depend = False
+        self.manual_depends = True
         self.pth = pth
 
         raw:str
         with open(self.pth,'r') as f:
             raw = f.read().split('\n',1) #type:ignore the files output is fs a string
         _ = raw[0].split(',')
-        self.loaders,self.mcversions,self.can_depend = [_[0]],[_[1]],_[2]=='depend' #type:ignore # loader doesnt really have to be a valid one
+        self.loaders,self.mcversions,self.can_depend = [_[0]],[_[1]],_[2]!='nodepend' #type:ignore # loader doesnt really have to be a valid one
 
-        required,optional = raw[1].split('\n[preference]\n')
+        required,optional = raw[1].replace('\n\n','\n').split('\n[preference]\n')[:2] #type:ignore # slugs are strings oml
+        required:list[Modrinth.slug] = required.strip().split('\n') #type:ignore
+        optional:list[Modrinth.slug] = optional.strip().split('\n') #type:ignore
+        slugs_preference:dict[str,bool] = {}
+        for mainslug in required:
+            slugs_preference[mainslug] = True
+        for mainslug in optional:
+            if not mainslug in slugs_preference:
+                slugs_preference[mainslug] = False
 
-        #could do this better but this is fine
-        for slug in required.strip().split('\n'):
-            self.mods.append((slug,True))
-        for slug in optional.strip().split('\n'):
-            self.mods.append((slug,False))
-        
+        for topslug,perfered in slugs_preference.items():
+            mainslug = topslug.split('[')[0]
+            reqslugs = []
+            req_index = topslug.find('[')
+            if req_index>0:
+                reqslugs = topslug[req_index:].strip('[]').split(',')
+            self.mods[mainslug] = (perfered,reqslugs)
+
         return self
 
 class App(ctk.CTk):
@@ -105,10 +117,10 @@ class App(ctk.CTk):
         self.selectable_mods = {}
 
         sluglen = 0
-        for slug,_ in self.modpack.mods:
+        for slug in self.modpack.mods.keys():
             if len(slug)>sluglen:
                 sluglen = len(slug)
-        for slug,default in self.modpack.mods:
+        for slug,(default,_) in self.modpack.mods.items():
             self.selectable_mods[slug] = ctk.CTkCheckBox(self.selectable_mods_frame,text=slug,width=300)
             if default:
                 self.selectable_mods[slug].select()
@@ -132,6 +144,17 @@ class App(ctk.CTk):
         for slug,ckbox in self.selectable_mods.items():
             if ckbox.get():
                 install.append(slug)
+                depends = self.modpack.mods[slug][1].copy()
+                install.extend(depends)
+                while depends!=[]:
+                    for depend in depends:
+                        if depend in self.modpack.mods.keys():
+                            newdepends = self.modpack.mods[depend][1]
+                            if not '' in newdepends:
+                                depends.extend(newdepends)
+                                install.extend(newdepends)
+                        depends.remove(depend)
+        install = list(set(install))
         for c,slug in enumerate(install):
             self.progress_bar.set((c+1)/(len(install)+1))
             self.progress_status.configure(text=f'downloading {slug[:16]}...')
@@ -139,7 +162,7 @@ class App(ctk.CTk):
             print(f'downloading {slug}...')
             import time
             time.sleep(0.2)
-            jarfile = Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend else 0)
+            jarfile = Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend and not self.modpack.manual_depends else 0)
             files.append(jarfile) #
         self.progress_status.configure(text=f'Done!')
         print('done!')
@@ -163,27 +186,34 @@ class App(ctk.CTk):
         self.update_idletasks()
 
         #remove old mods
-        for (cd,dirs,files) in os.walk(minecraftmodsfolder+'\\'):
-            for file in files:
-                self.progress_status.configure(True,text=f'removing {file[:16]}...')
-                self.update()
-                print(f'removing {file}!')
-                os.remove(os.path.abspath(os.path.join(cd,file)))
-    
-        #copy mods
-        for file in jarstocopy:
-            fpth = os.path.join(modsfolder,file)
-            despth = os.path.join(minecraftmodsfolder,file)
+        try:
+            for (cd,dirs,files) in os.walk(minecraftmodsfolder+'\\'):
+                for c,file in enumerate(files):
+                    self.progress_bar.set(c/len(jarstocopy))
+                    self.progress_status.configure(True,text=f'removing {file[:16]}...')
+                    self.update()
+                    print(f'removing {file}!')
+                    os.remove(os.path.abspath(os.path.join(cd,file)))
 
-            self.progress_status.configure(True,text=f"copying {file[:16]}...")
-            print(f"copying {file}...")
-            self.update()
-            with open(fpth,'rb') as f:
-                data:bytes = f.read()
-                with open(despth,'ab') as d:
-                    d.write(data)
+            #copy mods
+            for c,file in enumerate(jarstocopy):
+                self.progress_bar.set(c/len(jarstocopy))
+                fpth = os.path.join(modsfolder,file)
+                despth = os.path.join(minecraftmodsfolder,file)
+
+                self.progress_status.configure(True,text=f"copying {file[:16]}...")
+                print(f"copying {file}...")
+                self.update()
+                with open(fpth,'rb') as f:
+                    data:bytes = f.read()
+                    with open(despth,'ab') as d:
+                        d.write(data)
+            self.progress_status.configure(text=f'Done!')
+        except PermissionError:
+            self.progress_status.configure(text=f'permisions error!')
+            print('permisions error somewhere')
+        self.progress_bar.set(1)
         self.toggle_ui_interactions(True)
-        self.progress_status.configure(text=f'Done!')
         print('Done!')
 
 if __name__=='__main__':
