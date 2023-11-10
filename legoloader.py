@@ -125,9 +125,10 @@ class App(ctk.CTk):
                 install.append(slug)
         for c,slug in enumerate(install):
             self.progress_bar.set((c+1)/(len(install)+1))
-            self.update_idletasks()
+            self.update()
             print(f'downloading {slug}...')
             Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions)
+        print('done!')
         self.progress_bar.set(1)
         self.modpack_selector.configure(state='readonly')
         self.download_button.configure(state='normal')
