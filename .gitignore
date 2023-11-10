@@ -6,3 +6,4 @@ modpacks/*
 mods/
 LegoLoader/
 build.json
+output/
