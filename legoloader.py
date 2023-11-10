@@ -138,5 +138,9 @@ class App(ctk.CTk):
 
 
 if __name__=='__main__':
+    rd = ['mods','cache','modpacks']
+    for d in rd:
+        if not os.path.isdir(f"./{d}"):
+            os.mkdir(d)
     app = App()
     app.mainloop()
