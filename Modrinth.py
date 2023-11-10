@@ -1,6 +1,6 @@
 import requests,json,hashlib,os
 request_headers = {
-    'User-Agent': 'SuperLego9000/legoloader/2.0.0', # TODO make an email i can give out to companies that isnt my full name lol
+    'User-Agent': 'SuperLego9000/legoloader/2.1.0', # TODO make an email i can give out to companies that isnt my full name lol
     }
 
 import typing
@@ -31,7 +31,7 @@ def request_with_cache(url,modal=requests.get,headers=request_headers):
                     errordesc = res.json()
                     raise PermissionError(f"request error occured! Modrinth API: {errordesc['error']}:{errordesc['description']}")
                 case _:
-                    raise NotImplementedError(f"received status code:{res.status_code} from path '{url}'. unhandleable.")
+                    raise NotImplementedError(f"received status code:{res.status_code} from path '{url}'. unhandleable error please report.")
 
         with open(hashedpath,'w') as f:
             f.write(json.dumps(req))
@@ -46,7 +46,7 @@ def get_mod_versions(mod:slug,loaders:list[valid_loaders],mcversions:list[str]) 
     url = f"https://api.modrinth.com/v2/project/{mod}/version?loaders={ureloaders}&game_versions={uremcversions}"
      
     return request_with_cache(url,requests.get,request_headers) #type:ignore
-def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str],dependRecursion:int=5):
+def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str],dependRecursion:int=5) -> str:
     '''gets the latest version from cache or internet and downloads it'''
     mod = 'fabric-api' if mod =='9CJED7xi' else mod
     modsfolder = f"./mods/{','.join(loaders)};{','.join(mcversions)}"
@@ -69,10 +69,14 @@ def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str],depen
     for file in ver['files']:
         if file['filename'].endswith(".jar"):
             downloadedmodpath = f"{modsfolder}/{file['filename']}"
-            if os.path.isfile(downloadedmodpath):break # already have it
+            if os.path.isfile(downloadedmodpath):return file['filename'] # already have it
             print(f"downloading {file['filename']}")
             res = requests.get(file['url'],request_headers)
             assert res.status_code==200,PermissionError(f"downloading {file['url']} resulted status code:{res.status_code}")
             with open(downloadedmodpath,'wb') as f:
                 f.write(res.content)
-            break #already found the jar
+            return file['filename']
+        else:
+            raise IndexError(f"no jar files found for version in mod {ver['project_id']}")
+    raise NotImplementedError(f"failed to download slug {slug} for {loaders,mcversions}")
+    

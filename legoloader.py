@@ -1,7 +1,7 @@
 import Modrinth
 import customtkinter as ctk
 import os
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 
 class Modpack():
     pth:str
@@ -23,7 +23,7 @@ class Modpack():
 
         raw:str
         with open(self.pth,'r') as f:
-            raw = f.read().split('\n',1)
+            raw = f.read().split('\n',1) #type:ignore the files output is fs a string
         _ = raw[0].split(',')
         self.loaders,self.mcversions,self.can_depend = [_[0]],[_[1]],_[2]=='depend' #type:ignore # loader doesnt really have to be a valid one
 
@@ -73,16 +73,16 @@ class App(ctk.CTk):
 
         self.loader_label = ctk.CTkLabel(self.control_frame,text="Loader: ",state='disabled',height=20)
         self.version_label = ctk.CTkLabel(self.control_frame,text="Version: ",state='disabled',height=20)
-        self.download_button = ctk.CTkButton(self.control_frame,text='Download',state='disabled',command=self.download_mods)
-        self.install_button = ctk.CTkButton(self.control_frame,text='Install',state='disabled')
+        self.download_button = ctk.CTkButton(self.control_frame,text='Download',state='disabled',command=self.download_mods) #type:ignore # not my fault commands cant return values
+        self.install_button = ctk.CTkButton(self.control_frame,text='Install',state='disabled',command=self.install_mods)
         self.progress_status = ctk.CTkLabel(self.control_frame,text="Ready",height=20)
         self.progress_bar = ctk.CTkProgressBar(self.control_frame)
         self.progress_bar.set(1)
 
         self.loader_label.pack(side=ctk.TOP,padx=5,pady=5)
         self.version_label.pack(side=ctk.TOP,padx=5,pady=2)
-        self.download_button.pack(side=ctk.TOP,padx=5,pady=2)
         self.install_button.pack(side=ctk.TOP,padx=5,pady=2)
+        self.download_button.pack(side=ctk.TOP,padx=5,pady=2)
         self.progress_status.pack(side=ctk.TOP,padx=5,pady=2)
         self.progress_bar.pack(side=ctk.TOP,padx=5,pady=2)
         
@@ -122,15 +122,22 @@ class App(ctk.CTk):
         self.download_button.configure(state='default')
         self.install_button.configure(state='default')
         self.progress_status.configure(True,text="Ready!")
-    def download_mods(self):
-        self.modpack_selector.configure(state='disabled')
-        self.download_button.configure(state='disabled')
-        self.install_button.configure(state='disabled')
+    def toggle_ui_interactions(self,can_interact:bool=True):
+        state = 'normal' if can_interact else 'disabled'
+
+        self.modpack_selector.configure(state='readonly' if can_interact else 'disabled')
+        self.download_button.configure(state=state)
+        self.install_button.configure(state=state)
+        for slug,ckbox in self.selectable_mods.items():
+            ckbox.configure(state=state)
+
+    def download_mods(self) -> list[str]:
+        self.toggle_ui_interactions(False)
         install:list[Modrinth.slug] = []
+        files:list[str] = []
         for slug,ckbox in self.selectable_mods.items():
             if ckbox.get():
                 install.append(slug)
-            ckbox.configure(state='disabled')
         for c,slug in enumerate(install):
             self.progress_bar.set((c+1)/(len(install)+1))
             self.progress_status.configure(text=f'downloading {slug[:16]}...')
@@ -138,19 +145,66 @@ class App(ctk.CTk):
             print(f'downloading {slug}...')
             import time
             time.sleep(0.2)
-            #Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend else 0)
-        for ckbox in self.selectable_mods.values():
-            ckbox.configure(state='normal')
+            jarfile = Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend else 0)
+            files.append(jarfile) #
         self.progress_status.configure(text=f'Done!')
         print('done!')
         self.progress_bar.set(1)
-        self.modpack_selector.configure(state='readonly')
-        self.download_button.configure(state='normal')
-        self.install_button.configure(state='normal')
-    
+        self.toggle_ui_interactions(True)
+        return files
+    def install_mods(self):
+        jarstocopy = self.download_mods()
+        self.toggle_ui_interactions(False)
+        self.update_idletasks()
 
-    
+        modsfolder = f"./mods/{','.join(self.modpack.loaders)};{','.join(self.modpack.mcversions)}"
+        modsfolder = os.path.abspath(modsfolder)
+        minecraftmodsfolder = os.path.join(os.environ.get('userprofile'),"AppData\\Roaming\\.minecraft\\mods\\") #type:ignore # userprofile is "allways" in environ
+        minecraftmodsfolder = os.path.abspath(minecraftmodsfolder)
 
+        if not os.path.isdir(minecraftmodsfolder): #if you somehow dont have a mods folder?
+            os.mkdir(minecraftmodsfolder)
+
+        self.progress_status.configure(text='clearing old mods...')
+        self.update_idletasks()
+
+        #remove old mods
+        for (cd,dirs,files) in os.walk(minecraftmodsfolder+'\\'):
+            for file in files:
+                self.progress_status.configure(True,text=f'removing {file[:16]}...')
+                self.update()
+                print(f'removing {file}!')
+                os.remove(os.path.abspath(os.path.join(cd,file)))
+    
+        #copy mods
+        for file in jarstocopy:
+            fpth = os.path.join(modsfolder,file)
+            despth = os.path.join(minecraftmodsfolder,file)
+
+            self.progress_status.configure(True,text=f"copying {file[:16]}...")
+            print(f"copying {file}...")
+            self.update()
+            with open(fpth,'rb') as f:
+                data:bytes = f.read()
+                with open(despth,'ab') as d:
+                    d.write(data)
+        # for (cd,_,files) in os.walk(modsfolder+'\\'):
+        #     for file in files:
+        #         fpth = os.path.join(cd,file)
+        #         despth = os.path.join(minecraftmodsfolder,file)
+
+        #         self.progress_status.configure(True,text=f"copying {file[:16]}...")
+        #         print(f"copying {file}...")
+        #         self.update()
+        #         with open(fpth,'rb') as f:
+        #             data:bytes = f.read()
+        #             with open(despth,'ab') as d:
+        #                 d.write(data)
+
+        #reenable
+        self.toggle_ui_interactions(True)
+        self.progress_status.configure(text=f'Done!')
+        print('Done!')
 
 if __name__=='__main__':
     rd = ['mods','cache','modpacks']
