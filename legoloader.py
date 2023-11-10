@@ -39,38 +39,31 @@ class Modpack():
 
 class App(ctk.CTk):
     modpack:Modpack
-    selected_modpack:ctk.StringVar
     modpack_selector:ctk.CTkComboBox
     selectable_mods:dict = {}
-    selectable_mods_frame:ctk.CTkFrame
+    selectable_mods_frame:ctk.CTkScrollableFrame
     
     
     def __init__(self):
         super().__init__()
         self.title(f"LegoLoader {__version__}")
-        self.resizable(False,False)
+        self.maxsize(2000,800)
+        self.eval(f'tk::PlaceWindow {str(self)} center')
+        self.update()
 
         self.rowconfigure(0,weight=1)
-        self.rowconfigure(1,weight=4)
         self.columnconfigure(0,weight=1)
-        self.columnconfigure(1,weight=1)
-
-        mptext = ctk.CTkLabel(self,text="modpack: ")
-        self.selected_modpack = ctk.StringVar()
-        self.modpack_selector = ctk.CTkComboBox(self,values=['error'],state='readonly',command=self.select_modpack)
-        self.modpack_selector.set("Modpack")
-        self.modpack_selector_refresh()
-
-        self.selectable_mods_frame = ctk.CTkFrame(self)
+        self.columnconfigure(1,weight=20)
 
         self.control_frame = ctk.CTkFrame(self)
-        
-        mptext.grid(row=0,column=0)
-        self.modpack_selector.grid(row=0,column=1,sticky=ctk.NW)
-        self.selectable_mods_frame.grid(row=1,column=1,padx=5,pady=5)
+        self.selectable_mods_frame = ctk.CTkScrollableFrame(self)
 
-        self.control_frame.grid(row=1,column=0,sticky=ctk.NSEW,padx=5,pady=5)
+        self.control_frame.grid(row=0,column=0,sticky=ctk.NSEW,padx=5,pady=5)
+        self.selectable_mods_frame.grid(row=0,column=1,sticky=ctk.NSEW,padx=5,pady=5)
 
+        self.modpack_selector = ctk.CTkComboBox(self.control_frame,values=['error'],state='readonly',command=self.select_modpack)
+        self.modpack_selector.set("Modpack")
+        self.modpack_selector_refresh()
         self.loader_label = ctk.CTkLabel(self.control_frame,text="Loader: ",state='disabled',height=20)
         self.version_label = ctk.CTkLabel(self.control_frame,text="Version: ",state='disabled',height=20)
         self.download_button = ctk.CTkButton(self.control_frame,text='Download',state='disabled',command=self.download_mods) #type:ignore # not my fault commands cant return values
@@ -79,12 +72,13 @@ class App(ctk.CTk):
         self.progress_bar = ctk.CTkProgressBar(self.control_frame)
         self.progress_bar.set(1)
 
-        self.loader_label.pack(side=ctk.TOP,padx=5,pady=5)
-        self.version_label.pack(side=ctk.TOP,padx=5,pady=2)
-        self.install_button.pack(side=ctk.TOP,padx=5,pady=2)
-        self.download_button.pack(side=ctk.TOP,padx=5,pady=2)
-        self.progress_status.pack(side=ctk.TOP,padx=5,pady=2)
-        self.progress_bar.pack(side=ctk.TOP,padx=5,pady=2)
+        self.progress_status.pack(side=ctk.TOP,padx=5,pady=2,fill=ctk.X)
+        self.progress_bar.pack(side=ctk.TOP,padx=5,pady=2,fill=ctk.X)
+        self.modpack_selector.pack(side=ctk.TOP,padx=5,pady=5,fill=ctk.X)
+        self.loader_label.pack(side=ctk.TOP,padx=5,pady=5,fill=ctk.X)
+        self.version_label.pack(side=ctk.TOP,padx=5,pady=2,fill=ctk.X)
+        self.install_button.pack(side=ctk.TOP,padx=5,pady=2,fill=ctk.X)
+        self.download_button.pack(side=ctk.TOP,padx=5,pady=2,fill=ctk.X)
         
     def modpack_selector_refresh(self):
         '''reloads all options for the modpack selector'''
@@ -118,7 +112,7 @@ class App(ctk.CTk):
             self.selectable_mods[slug] = ctk.CTkCheckBox(self.selectable_mods_frame,text=slug,width=300)
             if default:
                 self.selectable_mods[slug].select()
-            self.selectable_mods[slug].pack()
+            self.selectable_mods[slug].pack(side=ctk.TOP,padx=5,pady=1,fill=ctk.X)
         self.download_button.configure(state='default')
         self.install_button.configure(state='default')
         self.progress_status.configure(True,text="Ready!")
@@ -188,20 +182,6 @@ class App(ctk.CTk):
                 data:bytes = f.read()
                 with open(despth,'ab') as d:
                     d.write(data)
-        # for (cd,_,files) in os.walk(modsfolder+'\\'):
-        #     for file in files:
-        #         fpth = os.path.join(cd,file)
-        #         despth = os.path.join(minecraftmodsfolder,file)
-
-        #         self.progress_status.configure(True,text=f"copying {file[:16]}...")
-        #         print(f"copying {file}...")
-        #         self.update()
-        #         with open(fpth,'rb') as f:
-        #             data:bytes = f.read()
-        #             with open(despth,'ab') as d:
-        #                 d.write(data)
-
-        #reenable
         self.toggle_ui_interactions(True)
         self.progress_status.configure(text=f'Done!')
         print('Done!')
