@@ -57,6 +57,9 @@ def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str]):
 
     assert len(ver['files'])>0,KeyError("tried downloading a mod with no files")
 
+    for depend in ver['dependencies']:
+        download_mod(depend['project_id'],loaders,mcversions)
+    
     for file in ver['files']:
         if file['filename'].endswith(".jar"):
             downloadedmodpath = f"{modsfolder}/{file['filename']}"
