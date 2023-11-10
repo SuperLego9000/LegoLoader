@@ -6,6 +6,7 @@ class Modpack():
     pth:str
     mods:list[tuple[Modrinth.slug,bool]] = []
     loaders:list[Modrinth.valid_loaders] = []
+    can_depend:bool = False
     mcversions:list[str] = []
     def __repr__(self) -> str:
         return f"<Modpack '{self.pth}'>"
@@ -16,13 +17,14 @@ class Modpack():
         self.mods = []
         self.loaders = []
         self.mcversions = []
+        self.can_depend = False
         self.pth = pth
 
         raw:str
         with open(self.pth,'r') as f:
             raw = f.read().split('\n',1)
         _ = raw[0].split(',')
-        self.loaders,self.mcversions = [_[0]],[_[1]] #type:ignore # loader doesnt really have to be a valid one
+        self.loaders,self.mcversions,self.can_depend = [_[0]],[_[1]],_[2]=='depend' #type:ignore # loader doesnt really have to be a valid one
 
         required,optional = raw[1].split('\n[preference]\n')
 
@@ -127,7 +129,7 @@ class App(ctk.CTk):
             self.progress_bar.set((c+1)/(len(install)+1))
             self.update()
             print(f'downloading {slug}...')
-            Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions)
+            Modrinth.download_mod(slug,self.modpack.loaders,self.modpack.mcversions,5 if self.modpack.can_depend else 0)
         print('done!')
         self.progress_bar.set(1)
         self.modpack_selector.configure(state='readonly')

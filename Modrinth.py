@@ -1,6 +1,6 @@
 import requests,json,hashlib,os
 request_headers = {
-    'User-Agent': 'SuperLego9000/legoloader/1.0.0', # TODO make an email i can give out to companies that isnt my full name lol
+    'User-Agent': 'SuperLego9000/legoloader/2.0.0', # TODO make an email i can give out to companies that isnt my full name lol
     }
 
 import typing
