@@ -1,0 +1,1 @@
+change modpack files to json instead of arbitrary format thing
