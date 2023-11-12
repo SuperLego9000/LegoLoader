@@ -1,6 +1,6 @@
 import requests,json,hashlib,os
 request_headers = {
-    'User-Agent': 'SuperLego9000/legoloader/2.4.0', # TODO make an email i can give out to companies that isnt my full name lol
+    'User-Agent': 'SuperLego9000/legoloader/3.1.0', # TODO make an email i can give out to companies that isnt my full name lol
     }
 
 import typing
@@ -46,7 +46,7 @@ def get_mod_versions(mod:slug,loaders:list[valid_loaders],mcversions:list[str]) 
     url = f"https://api.modrinth.com/v2/project/{mod}/version?loaders={ureloaders}&game_versions={uremcversions}"
      
     return request_with_cache(url,requests.get,request_headers) #type:ignore
-def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str],dependRecursion:int=5) -> str:
+def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str],dependRecursion:int=5,index:int=0) -> str:
     '''gets the latest version from cache or internet and downloads it'''
     mod = 'fabric-api' if mod =='9CJED7xi' else mod
     modsfolder = f"./mods/{','.join(loaders)};{','.join(mcversions)}"
@@ -54,7 +54,7 @@ def download_mod(mod:slug,loaders:list[valid_loaders],mcversions:list[str],depen
         os.mkdir(modsfolder)
     vers:list[mod_version_descriptor] = get_mod_versions(mod,loaders,mcversions)
     assert len(vers)>0,KeyError(f"mod has no versions matching requirements {mod,loaders,mcversions}")
-    ver:mod_version_descriptor = vers[0]
+    ver:mod_version_descriptor = vers[index]
 
     assert len(ver['files'])>0,KeyError("tried downloading a mod with no files")
 
