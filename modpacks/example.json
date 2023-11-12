@@ -1,0 +1,37 @@
+{
+    "format_version": 1,
+    "meta": {
+        "pack_version": 1,
+        "loader": [
+            "fabric"
+        ],
+        "game_version": [
+            "1.20.1"
+        ]
+    },
+    "data": {
+        "modrinth": {
+            "mods": [
+                {
+                    "id": "modmenu",
+                    "dependencies": [
+                        "fabric-api@modrinth"
+                    ]
+                },{
+                    "id": "environmentz",
+                    "dependencies": [
+                        "fabric-api@modrinth",
+                        "autotag@modrinth"
+                    ],
+                    "index":-1
+                }
+            ],
+            "shaders": [
+                {
+                    "id": "bsl-shaders",
+                    "default": true
+                }
+            ]
+        }
+    }
+}

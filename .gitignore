@@ -3,7 +3,7 @@ __pycache__/
 
 cache/
 modpacks/*
-!modpacks/example.ldr
+!modpacks/example.json
 mods/
 
 LegoLoader/

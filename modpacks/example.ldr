@@ -1,6 +1,0 @@
-fabric,1.20.2,manual
-modmenu[fabric-api]
-iris[sodium]
-sodium[fabric-api]
-[preference]
-clothconfig[fabric-api]
